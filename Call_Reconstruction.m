@@ -103,7 +103,7 @@ while continue_recon == 1
     % if the grain made it this far, reset the counters and do 5 graph
     % cuts (1 for the parent, 4 for the twins) to find the parent/twin areas
     bad_cut_counter = 0;
-    [PT_ID_stack] = Seperate_Twins(proposed_grain, neigh_list, IP_wts, PT_oris);
+    [PT_ID_stack] = Seperate_Twins(proposed_grain, neigh_list, IP_wts, PT_oris,options);
     % Use this data to overwrite the orientation and phase data in LT_ebsd
     for i = 1:size(PT_oris,1)
         mask = PT_ID_stack(i,1:end);
@@ -163,9 +163,6 @@ lll = ((likelyhoods)+2)*0.175;
 % temp plotting stuff
 %%figure()
 %%plot(Active_ebsd,lll)
-
-% options.RGC_post_pre_m =0.175;
-% options.RGC_post_pre_b =0.35;
 
 % make a digraph with n+2 nodes (1 per voxel,plus source and sink)
 % NOTE: source has ID n+1, sink has ID n+2
@@ -230,8 +227,6 @@ HT_CS = Rough_Guess.CS;
 psi = Rough_Guess.opt.psi;
 oris = Rough_Guess.orientations;
 LT_MDF = Rough_Guess.opt.LT_MDF;
-options.RGC_post_pre_m =0.175;
-options.RGC_post_pre_b =0.35;
 
 % find the most likely HT orientation, deduce (if applicable), generate all
 % LT variants of the parent and twin (120 non-unique for steel), and build
@@ -316,7 +311,7 @@ proposed_grain = Rough_Guess(cs);
 end
 
 
-function [Parent_and_Twin_IDs] = Seperate_Twins(proposed_grain, neigh_list, IP_wts, PT_oris);
+function [Parent_and_Twin_IDs] = Seperate_Twins(proposed_grain, neigh_list, IP_wts, PT_oris,options);
 % Given we have a for sure parent grain, check to see if parts would make
 % more sense as a twin or as part of the parent.
 
@@ -330,72 +325,54 @@ HT_CS = proposed_grain.CS;
 [R2T,~] = calc_R2T(OR,proposed_grain.CSList(3),proposed_grain.CSList(2));
 psi = proposed_grain.opt.psi;
 oris = proposed_grain.orientations;
-options.RGC_post_pre_m =0.175;
-options.RGC_post_pre_b =0.35;
 
 % We already got the most likely HT Parent grain. NOTE: We COULD
 % recalculate the most likely grain here (as was done in the original
 % code), but I am fairly sure it is mostly redundant to do so.
 
 Parent_and_Twin_IDs = zeros(size(PT_oris,1),size(oris,1));
-for i = 1:size(PT_oris,1)
-    % Figure out how much of the given grain is assigned. if all of it,
-    % stop the loop.
-    assigned =[1:N].*(sum(Parent_and_Twin_IDs,1)>0);
-    if sum(assigned == 0) == 0
-        break
-    end
 
-    % There HAS to be a better name for this, but this is the variants that
-    % all originate from the same Parent if i = 1, or twin if 1 >1
-    origin_variants = symmetrise(PT_oris(i))*R2T;
-    origin_odf = calcDensity(origin_variants,'kernel',psi);
-    origin_odf.CS = HT_CS;
+% Find the likelyhood that each pixel is part of the Parent grain. this
+% will become the background weighting for the 4 twin cuts.
+Parent_variants = symmetrise(PT_oris(1))*R2T;
+Parent_odf = calcDensity(Parent_variants,'kernel',psi);
+Parent_odf.CS = HT_CS;
+bg_likelyhoods = eval(Parent_odf,oris);
+bg_likelyhoods(bg_likelyhoods <=0) = 0;
+mx = (bg_likelyhoods*options.RGC_post_pre_m);
+b =  options.RGC_post_pre_b;
+OP_Parent_wts = mx + b;
+clear Parent_variants Parent_odf bg_likelyhoods mx b
+
+for i = 2:size(PT_oris,1)
+
+    % find the likelyhood that each pixel is part of grain i
+    Twin_variants = symmetrise(PT_oris(i))*R2T;
+    Twin_odf = calcDensity(Twin_variants,'kernel',psi);
+    Twin_odf.CS = HT_CS;
+    fg_likelyhoods = eval(Twin_odf,oris);
+    fg_likelyhoods(fg_likelyhoods<0) = 0;
+    mx = (fg_likelyhoods*options.RGC_post_pre_m);
+    b =  options.RGC_post_pre_b;
+    OP_twin_wts = mx + b;
+    clear Twin_variants Twin_odf fg_likelyhoods mx b
     
-    % tester figures
-    %%%figure()
-    %%%plotPDF(origin_odf,Miller(0, 0, 1,HT_CS), 'all')
-    %%%hold on
-    %%%plotPDF(oris,Miller(0, 0, 1,HT_CS), 'all')
-
-    % This time, the OP weights are for JUST the Parent or Twin
-    % selected, not all possible parents and twins
-    likelyhoods = eval(origin_odf,oris);
-    likelyhoods(likelyhoods <=0) = 0;
-    OP_wts = (likelyhoods*options.RGC_post_pre_m) + options.RGC_post_pre_b;
-    % set the weights of already assigned points to 0.0001. Will do nothing 
-    % on first pass, but on later passes ,will make already assigned grains
-    % nearly impossible to cut out. theoretically, any weight below 1 would
-    % achieve this, but setting it extra low helps take care of fringe
-    % cases I may not have considered.
+    % Set the weights of already assigned poitns to 1e-10, making already
+    % assigned grains nearly impossible to cut (should maybe be 0?)
     assigned =[1:N].*(sum(Parent_and_Twin_IDs,1)>0);
-    OP_wts(ismember([1:N],assigned)>0) = 0.0001;
+    OP_twin_wts(ismember([1:N],assigned)>0) = 1e-10;
 
-
-    % plotting for help
-    %%%figure()
-    %%%plot(proposed_grain,OP_wts)
-    %%%figure()
-    %%%l = L(L>0);
-    %%%r = L(R>0);
-    %%%scatter(-proposed_grain(l).y -proposed_grain(r).y, ...
-    %%%    proposed_grain(l).x +proposed_grain(r).x,1, pruned_IP_wts)
     % make a digraph with n+2 nodes (1 per voxel, plus source and sink)
     % NOTE: source has ID n+1, sink has ID n+2
     FP_digraph = digraph;
     FP_digraph = addnode(FP_digraph,N+2);
-    
-    % add source-to-voxel weights (equal to likelyhood that a given voxel's
-    % orientation is part of the grain of the suggested orientation)
-    FP_digraph = addedge(FP_digraph, N+1, 1:N, OP_wts);
-    % add voxel-to-sink weights (PRECISION CUT: WE ARE NOW WEIGHTING BY
-    % INVERSE OF SOURCE-TO-VOXEL WEIGHTS)
-    FP_digraph = addedge(FP_digraph, 1:N, N+2, mean(OP_wts));
-    
+    % add source-to-voxel weights (likelyhood pixel is twin i)
+    FP_digraph = addedge(FP_digraph, N+1, 1:N, OP_twin_wts);
+    % add voxel-to-sink weights (likelyhood pixel is part of the parent)
+    FP_digraph = addedge(FP_digraph, 1:N, N+2, OP_Parent_wts);
     % Add in-plane (voxel to voxel) connections)
     FP_digraph = addedge(FP_digraph,L,R,pruned_IP_wts);
     FP_digraph = addedge(FP_digraph,R,L,pruned_IP_wts);
-
     % Perform graph cut
     [~,~,cs,ct]=maxflow(FP_digraph,N+1,N+2);
     ct(ct>length(proposed_grain)) = [];
@@ -403,21 +380,31 @@ for i = 1:size(PT_oris,1)
     % save out the mask of the cut
 %    yes_mask = [1:N].*ismember([1:N],cs);
     Parent_and_Twin_IDs(i,1:end) = ismember([1:N],cs);
-    % Code for debugging to show the cut out area. 
-    %%%%%figure();
-    %%%%%plot(proposed_grain)
-    %%%%%hold on
-    %%%%%plot(proposed_grain(cs),proposed_grain(cs).orientations)
     % find the already assigned orientations, set their in-plane weights to
     % zero so they won't get pulled out again.
     assigned =[1:N].*(sum(Parent_and_Twin_IDs,1)>0);
-    %%%figure()
-    %%%plot(proposed_grain,Parent_and_Twin_IDs(i,1:end))
-%    L = L.*(ismember(L,assigned) == 0);
-%    R = R.*(ismember(R,assigned) == 0);
     neigh_mask = ((ismember(L,assigned) == 0) +(ismember(R,assigned) == 0))>0;
     pruned_IP_wts = pruned_IP_wts.*neigh_mask;    
+
+    % plotting for help
+    %figure()
+    %plot(proposed_grain,OP_wts)
+    %figure()
+    %l = L(L>0);
+    %r = L(R>0);
+    %scatter(-proposed_grain(l).y -proposed_grain(r).y, ...
+    %    proposed_grain(l).x +proposed_grain(r).x,1, pruned_IP_wts)
+    %%%figure()
+    %%%plot(proposed_grain,Parent_and_Twin_IDs(i,1:end))
 end
+% get a map of twice-twinned (should never happen) and never twinned pixels
+overlap_mask = sum(Parent_and_Twin_IDs,1) <= 1;
+parent_mask = sum(Parent_and_Twin_IDs,1) ~= 1;
+% Twice twinned pixels get switched to never twinned
+Parent_and_Twin_IDs = Parent_and_Twin_IDs.*overlap_mask;
+% assign never twinned pixels to parent
+Parent_and_Twin_IDs(1,:) = parent_mask;
+% and add the IDs back in (maybe make this step unnecessary in the future?)
 Parent_and_Twin_IDs = Parent_and_Twin_IDs.*[1:N];
 end
 

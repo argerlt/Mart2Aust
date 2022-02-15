@@ -187,9 +187,29 @@ for i = 1:length(Tasks)
     % neighborhood) change options.degree_of_connections_for_neighborhood
     % from 2 to 1.
     Tasks(i).Recon_ebsd = Call_Reconstruction(Tasks(i).ebsd,Tasks(i).options);
+    [grains,Tasks(i).Recon_ebsd.grainId] = ...
+        calcGrains(Tasks(i).Recon_ebsd('indexed'),'angle',1*degree);
+
+    out = Tasks(i).Recon_ebsd;
+    in = Tasks(i).ebsd;
+
+    figure()
+    plot(out(out.phase==3),out(out.phase==3).orientations)
+    hold on
+    plot(grains.boundary)
+    
+    figure()
+    plot(out(out.phase==3),out(out.phase==3).orientations)
+    hold on
+    plot(grains.boundary)
+
     figure()
     plot(Tasks(i).Recon_ebsd(Tasks(i).Recon_ebsd.phaseId == 3),...
         Tasks(i).Recon_ebsd(Tasks(i).Recon_ebsd.phaseId == 3).orientations)
+    figure()
+    plot(test(test.phase==3),test(test.phase==3).orientations)
+    hold on
+    plot(grains.boundary)
 end
 % 
 % %============================================
