@@ -498,5 +498,14 @@ b = neigh_list(ismember(neigh_list(2:end,1),Active_Ebsd.id),1);
 ab = unique([a; b]);
 orphan_IDs = Active_Ebsd.id(ismember(Active_Ebsd.id,ab) == 0);
 end
+    % BIG NOTE HERE: FOR SOME REASON, the original code uses not just
+    % neighbors, but neighbors of neighbors in their code (IE,1st through
+    % 3rd 2D Von Neumann neighborhoods) to calculate the adjacency matrix. 
+    % This SEEMS wrong, as it isnt a typical adjacency array A, but the 
+    % equivilant of A +(A*A). It would also slow down the graph cut by a 
+    % factor of 4. HOWEVER, for some reason it works, so I'm keeping as an 
+    % option.To switch to first (IE, only 1st Von Neumann
+    % neighborhood) change options.degree_of_connections_for_neighborhood
+    % from 2 to 1.
 
 
