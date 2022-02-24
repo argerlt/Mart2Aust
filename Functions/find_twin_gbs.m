@@ -4,7 +4,8 @@ function [Aus_gb_merged,S3,S9] = find_twin_gbs(ebsd, phaseID)
 % find all boundaries
 [grains,~,~] = calcGrains(ebsd, 'angle', 1*degree);
 grains = grains.smooth(5);
-Aus_gb = grains.boundary('Recon_Austenite','Recon_Austenite');
+Recon_phasename = ebsd.CSList{3}.mineral;
+Aus_gb = grains.boundary(Recon_phasename,Recon_phasename);
 
 % define S3 and S9. 
 %S3 is defined using u1v1 method from Steve

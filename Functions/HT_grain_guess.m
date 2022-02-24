@@ -40,8 +40,11 @@ else
     tol = 0.85*degree;
 end
 
-% make a copy of ebsd we can goof with (pretty sure this is unnecessary?)
+% make a copy of ebsd we can goof with
 tmpEbsd = ebsd(ebsd.phaseId == 2);
+tmpEbsd.phaseMap = [1,2,0];
+tmpEbsd.CSList = {tmpEbsd.CSList{1} tmpEbsd.CSList{2} tmpEbsd.CSList{end}};
+
 % use the MTEX calcgrains to segment out Martensite grains
 [grains,tmpEbsd.grainId] = calcGrains(tmpEbsd);
 

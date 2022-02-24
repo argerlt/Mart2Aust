@@ -56,7 +56,7 @@ options = load_options();
 %%%%%%%   Create task list of EBSD scans  %%%%%%%%
 % Make a list of the EBSD text files you want to run through AusRecon
 fnames = dir(meta.Data_folder + '\'+'*.ang');
-fnames = fnames(1:10);
+fnames = fnames(1:1);
 % delete this last line later, for now just grabs the twinned grain to test
 % twinning edge cases
 %fnames(6) = dir('../EBSD/AF96_Large/4D-XIII-A_cleaned.ang');
@@ -134,31 +134,31 @@ clear original_ebsd reformatted_ebsd i
 %Tasks(6).options.OR_noise = 0.0361;
 %Tasks(7).options.OR_noise = 0.0375;
 % ------
-Tasks(1).options.OR_ksi =  [2.9057   7.7265   8.2255];
-Tasks(2).options.OR_ksi =  [2.9057   7.7714   8.1489];
-Tasks(3).options.OR_ksi =  [3.0124   8.2746   8.6362];
-Tasks(4).options.OR_ksi =  [2.8199   8.3107   8.6233];
-Tasks(5).options.OR_ksi =  [ 4.8555  9.6552   9.9376];
-Tasks(6).options.OR_ksi =  [3.0825   7.9865   8.4129];
-Tasks(7).options.OR_ksi =  [ 3.0624  7.8404   8.2899];
-Tasks(8).options.OR_ksi =  [ 2.7885  9.7678   9.8262];
-Tasks(9).options.OR_ksi =  [ 3.2479  8.3699   8.7926];
-Tasks(10).options.OR_ksi = [ 2.9300  9.0332   9.2412];
-Tasks(1).options.OR_noise =  0.0281;
-Tasks(2).options.OR_noise =  0.0275;
-Tasks(3).options.OR_noise =  0.0333;
-Tasks(4).options.OR_noise =  0.0332;
-Tasks(5).options.OR_noise =  0.0514;
-Tasks(6).options.OR_noise =  0.0310;
-Tasks(7).options.OR_noise =  0.0293;
-Tasks(8).options.OR_noise =  0.0402;
-Tasks(9).options.OR_noise =  0.0304;
-Tasks(10).options.OR_noise = 0.0340;
+% Tasks(1).options.OR_ksi =  [2.9057   7.7265   8.2255];
+% Tasks(2).options.OR_ksi =  [2.9057   7.7714   8.1489];
+% Tasks(3).options.OR_ksi =  [3.0124   8.2746   8.6362];
+% Tasks(4).options.OR_ksi =  [2.8199   8.3107   8.6233];
+% Tasks(5).options.OR_ksi =  [ 4.8555  9.6552   9.9376];
+% Tasks(6).options.OR_ksi =  [3.0825   7.9865   8.4129];
+% Tasks(7).options.OR_ksi =  [ 3.0624  7.8404   8.2899];
+% Tasks(8).options.OR_ksi =  [ 2.7885  9.7678   9.8262];
+% Tasks(9).options.OR_ksi =  [ 3.2479  8.3699   8.7926];
+% Tasks(10).options.OR_ksi = [ 2.9300  9.0332   9.2412];
+% Tasks(1).options.OR_noise =  0.0281;
+% Tasks(2).options.OR_noise =  0.0275;
+% Tasks(3).options.OR_noise =  0.0333;
+% Tasks(4).options.OR_noise =  0.0332;
+% Tasks(5).options.OR_noise =  0.0514;
+% Tasks(6).options.OR_noise =  0.0310;
+% Tasks(7).options.OR_noise =  0.0293;
+% Tasks(8).options.OR_noise =  0.0402;
+% Tasks(9).options.OR_noise =  0.0304;
+% Tasks(10).options.OR_noise = 0.0340;
 
 for i = 1:length(Tasks)
     CS_HT =Tasks(1).ebsd.CSList{1};
-    CS_LT =Tasks(2).ebsd.CSList{1};
-    try
+    CS_LT =Tasks(1).ebsd.CSList{2};
+%    try
         % First calculate the correct OR and HW
         % NOTE: ask steve for why the HW is calculated during this step
         [OR,HW,metadata] = AutoOR_estimation(Tasks(i).ebsd,Tasks(i).options);
@@ -174,10 +174,10 @@ for i = 1:length(Tasks)
         Tasks(i).ebsd.opt.LT_MDF = LT_MDF;
         Tasks(i).ebsd.opt.psi = psi;
         Tasks(i).stage = 2;
-    catch
+ %   catch
         disp('beans!!!')
     end
-end
+%end
 clear psi OR metadata M LT_MDF i HW
 
 % %============================================
@@ -209,33 +209,33 @@ for i = 1:length(Tasks)
     % together and move on with our lives)
 
 end
-
-%%
-% ===== Restart from here for Segmentation Troubleshooting ===== %
-clear all
-close all
-load misc/Post_OR_10_recon_pass.mat
-% reset options in case they change
-for i = 1:length(Tasks)
-    Tasks(i).options = load_options;
-end
-
-%============================================
-% VARIANT SEGMENTATION
-%============================================
-for i = length(Fnames)
-    % THIS ALSO NEEDS A MAJOR REWRITE. I have spent easily 100 hours trying
-    % to understand this function, we need to just state out loud what it
-    % does and how it does it, and write it out on the board as well
-    Tasks(i).segmented = Segmentation(Tasks(i).ebsd, ...
-        Tasks(i).Recon_ebsd,Tasks(i).options);
-end
-
-%============================================
-% Done
-%============================================
-% Time to go get lunch
-
+% 
+% %%
+% % ===== Restart from here for Segmentation Troubleshooting ===== %
+% clear all
+% close all
+% load misc/Post_OR_10_recon_pass.mat
+% % reset options in case they change
+% for i = 1:length(Tasks)
+%     Tasks(i).options = load_options;
+% end
+% 
+% %============================================
+% % VARIANT SEGMENTATION
+% %============================================
+% for i = length(Fnames)
+%     % THIS ALSO NEEDS A MAJOR REWRITE. I have spent easily 100 hours trying
+%     % to understand this function, we need to just state out loud what it
+%     % does and how it does it, and write it out on the board as well
+%     Tasks(i).segmented = Segmentation(Tasks(i).ebsd, ...
+%         Tasks(i).Recon_ebsd,Tasks(i).options);
+% end
+% 
+% %============================================
+% % Done
+% %============================================
+% % Time to go get lunch
+% 
 
 
 

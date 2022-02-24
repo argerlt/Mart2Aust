@@ -15,6 +15,7 @@ else
 end
 % add specimen symmetry
 ebsd.opt.SS = specimenSymmetry(options.specimen_symmetry);
+% The EBSD was sucessfully loaded and prepped. update the progress marker
 ebsd.opt.step = "Loaded";
 end
 
@@ -30,8 +31,8 @@ assert(options.High_Temp_phase_symm == "m-3m","Steel Reconstruction has only bee
 % need to add switch here later to allow for grabbing unit cell dimensions
 % from ebsd scan or from options input (annoying switch/catch loop, do
 % later)
-M = [2.87, 2.87, 2.87];
-A = [3.65, 3.65, 3.65];
+M = options.Low_Temp_lattice_parameters;
+A = options.High_Temp_lattice_parameters;
 CS_HT = crystalSymmetry(options.High_Temp_phase_symm);
 CS_HT.mineral = options.High_Temp_phase_name;
 CS_HT.color = options.High_Temp_phase_color;
@@ -47,18 +48,25 @@ CS_R.mineral = options.Reconstructed_phase_name;
 CS_R.color = options.Reconstructed_phase_color;
 CS_R.axes = vector3d([A(1),0,0],[0,A(2),0],[0,0,A(3)]);
 
-CSList = {CS_HT,CS_LT,CS_R,'notIndexed'};
+CS_V = crystalSymmetry(options.Low_Temp_phase_symm);
+CS_V.mineral = options.Variant_phase_name;
+CS_V.color = options.Variant_phase_color;
+CS_V.axes = vector3d([M(1),0,0],[0,M(2),0],[0,0,M(3)]);
+
+CSList = {CS_HT,CS_LT,CS_R,CS_V,'notIndexed'};
 end
 
-function [HT_Id,LT_Id] = determine_HT_LT_Steel(old_CSList)
-%scan the CSListfor mineral names or cell dimensions that make sense
-% (should add more options here, but not sure whats best to look for)
+function [HT_Id,LT_Id] = determine_HT_LT_Steel(old_CSList,options)
+%scan the CSList for mineral names or cell dimensions that make sense
+% NOTE: At some point, some edge case WILL break this searcher. at that
+% point, people are going to have to start choosing the HT/LT phases
+% themselves, or write their edge case into this loop.
 
 % grab the searchable data
 n = length(old_CSList);
-names = strings(1,n);
-cell_dims = zeros(1,n);
-phase_linspace = 1:n;
+names = strings(1,n); % Used to store phase names
+cell_dims = zeros(1,n); % Used to store cell dimensions
+phase_linspace = 1:n; 
 for i = 1:n
     try
         [a,b,c] =old_CSList{i}.axes.double;
@@ -67,6 +75,9 @@ for i = 1:n
     catch
     end
 end
+
+% First try searching by phase names. Any phase that matches, remove from
+% remaining searches
 % Try Martensite names
 LT_Id = min(phase_linspace(contains(names,'art') == 1));
 if ~isempty(LT_Id)
@@ -79,19 +90,30 @@ if ~isempty(HT_Id)
     names(HT_Id)= "";
     cell_dims(HT_Id) = 0;
 end
-% If that fails, use the cell dimensions
+
+% If either of those failed, time to instead try matching phase options
+% with the expected cell dimensions taken from the options object
+
+% Martensite first
 if isempty(LT_Id)
-    [~,LT_Id] = min((cell_dims-2.87).^2);
+    LT_abc = options.Low_Temp_lattice_parameters; % target LT dimensions
+    [~,LT_Id] = min((cell_dims-LT_abc(1)).^2);
     names(LT_Id)= "";
     cell_dims(LT_Id) = 0;
 end
+% Then Austenite
 if isempty(HT_Id)
-    [delta,HT_Id] = min((cell_dims-3.65).^2);
+    HT_abc = options.High_Temp_lattice_parameters; % target HT dimensions
+    [delta,HT_Id] = min((cell_dims-HT_abc(1)).^2);
     if delta >0.05
         HT_Id = 60;
     end
 end
-% at this point, we at least have a pre(Aus) and post(Mart) phase id
+
+% because of how the last two dimension searches are written to find the
+% minimum delta, these will ALWAYS assign one phase to Martensite and one
+% to Austenite. Users are still responsible for verifying this was done
+% correctly however.
 end
 
 
@@ -113,7 +135,7 @@ if exist('HT_Id','var') && exist('LT_Id','var')
 else
 % Otherwise, scan the Phase data for mineral names or cell dimensions that 
 % make sense.
-[HT_Id,LT_Id] = determine_HT_LT_Steel(ebsd.CSList);
+[HT_Id,LT_Id] = determine_HT_LT_Steel(ebsd.CSList,options);
 end
 
 % using the HT_Id and LT_Id, fix the phaseIds array
@@ -128,7 +150,7 @@ ebsd.phaseId = phaseIds*0;
 ebsd.phaseMap = [0];
 %Then repopulate
 ebsd.CSList = CSList;
-ebsd.phaseMap = [1,2,3,0];
+ebsd.phaseMap = [1,2,3,4,0];
 ebsd.phaseId = phaseIds;
 
 % at this point, we have identical scans with the following phase IDs:
@@ -136,6 +158,8 @@ ebsd.phaseId = phaseIds;
 % 1 : Untransformed Parent
 % 2 : Transformed Child
 % 3 : Reconstructed Parent (starts empty)
+% 4 : Idealized Variants (starts empty)
+% 0 : Not Indexed (will also include phases like pearlite or cemetite that aren't part of the resonstruction)
 end
 
 
