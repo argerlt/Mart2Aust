@@ -1,6 +1,10 @@
 function [ austenite_proposal ] = global_pole_figure_estimation(austenite,CS,SS,smooth)
 
 austenite=project2FundamentalRegion(austenite,orientation(idquaternion,CS,SS));
+% Austin Note: This next "NiceEuler" line is over 70% of the runtime when
+% AutoOR is ran. either it needs to get simplified (pretty sure it can be)
+% or we need to be more efficient with fminsearch (currently call this
+% function 788 times per run, and it takes about 0.5 seconds each time)
 Euler_angles=niceEuler(austenite,'Bunge')/degree;
 bin_edges=(ceil(Euler_angles));
 

@@ -157,6 +157,8 @@ for iteration = 1:10
     
     MAP_options=optimset('fminsearch');
     MAP_options=optimset(MAP_options,'display','iter');
+    MAP_options.TolFun = options.OR_fit_TolFun;
+    MAP_options.TolX = options.OR_fit_TolX;
     optimfunc= @(samples) -posterior_pdf_fminunc(samples,prior_pars,martensite);
     x0=[ksi_initial,halfwidth_in/degree];
     
