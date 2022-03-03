@@ -98,7 +98,7 @@ end
 if isempty(LT_Id)
     LT_abc = options.Low_Temp_lattice_parameters; % target LT dimensions
     [~,LT_Id] = min((cell_dims-LT_abc(1)).^2);
-    names(LT_Id)= "";
+    names(LT_Id)= ""; %#ok<NASGU> 
     cell_dims(LT_Id) = 0;
 end
 % Then Austenite
@@ -147,7 +147,7 @@ phaseIds(phaseIds > 80) = 0;
 % standardized format. first delete old data in such a way that MTEX wont
 % complain
 ebsd.phaseId = phaseIds*0;
-ebsd.phaseMap = [0];
+ebsd.phaseMap = [0]; %#ok<NBRAK> 
 %Then repopulate
 ebsd.CSList = CSList;
 ebsd.phaseMap = [1,2,3,4,0];
