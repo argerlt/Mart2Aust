@@ -4,12 +4,12 @@
 % Flight Check
 %============================================
 % Change this line or everything breaks
-Aus_Recon_Parent_folder = "C:\Users\agerlt\workspace\Aus_Recon";
+Mart2Aust_Parent_folder = "C:\Users\agerlt\workspace\Mart2Aust";
 % make struct of where things are
-meta.Data_folder = Aus_Recon_Parent_folder + filesep +...
-    'EBSD'+ filesep +'AF96_321x';
-meta.MTEX_folder = Aus_Recon_Parent_folder + filesep + 'MTEX';
-meta.Functions_folder = string(pwd) + filesep + 'Functions';
+meta.Data_folder = Mart2Aust_Parent_folder + filesep +'Resources'+...
+    filesep + 'EBSD'+ filesep +'AF96_small';
+meta.MTEX_folder = Mart2Aust_Parent_folder + filesep + 'MTEX';
+meta.Functions_folder = Mart2Aust_Parent_folder + filesep + 'Mart2Aust';
 meta.current_folder = string(pwd);
 meta.MTEX_Version = "mtex-5.7.0";
 addpath(genpath(meta.Functions_folder));

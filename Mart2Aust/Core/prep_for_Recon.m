@@ -1,7 +1,5 @@
 function ebsd = prep_for_Recon(ebsd,options,HT_Id,LT_Id)
 %NOTE: CHANGE NAMES FROM PRE AND POST TO HT, LT, AND R
-% UNTITLED4 Summary of this function goes here
-%   Detailed explanation goes here
 if string(options.material) == "Steel"
     if exist('HT_Id','var') && exist('LT_Id','var')
         ebsd = steel_prep(ebsd,options,HT_Id,LT_Id);
@@ -154,7 +152,6 @@ ebsd.phaseMap = [1,2,3,4,0];
 ebsd.phaseId = phaseIds;
 
 % at this point, we have identical scans with the following phase IDs:
-%-1 : Unindexed
 % 1 : Untransformed Parent
 % 2 : Transformed Child
 % 3 : Reconstructed Parent (starts empty)
