@@ -1,32 +1,69 @@
-# Mart2Aust
+# **Mart2Aust**
+---
+### ***WARNING: this is still a work in progress. Use with caution, as things might break and are often inadequately documented**
+---
 
-Code Repository of AusRecon, a Prior Austenite reconstruction code for written
-in MATLAB  by Alexander Brust, Steve Niezgoda, and Eric Payton. This repository
-is maintained by Austin Gerlt, who is not an author, just an enthusiastic user.
+Mart2Aus reconstructs Parent grain structures from Electron BackScatter Diffraction (EBSD) scans of child structures. The code is provided in Matlab, specifically to take advantage of the crystallographic functions available through MTEX.
 
-NOTES ON GETTING DATA FOR THIS CODE:
-While any .ang file can (in theory) be used,  a large set of useful DISTRO A 
-datasets can be found at either of the locations listed below:
-AF Research Lab link: 
-https://drive.google.com/drive/folders/1cw21aKhuaXX_yEq_0JA0GJTm7L0Oi91o?usp=sharing
-ELSZ Storage File location:
-sftp://sshfs.rdte.afrl.dren.mil/   location: /project/RXCM/DISTRO_A_Datasets_AusRecon
+Users should note, while the crystallographic calculations and distribution functions are performed using MTEX, this algorithm is fundamentally differnent than the default parent-child reconstruction tool provided in MTEX. Whereas that tool is based on a clustering algorithm, this code uses a variation on image graph cut theory, which was originally developed by (cite). A Mincut-Maxflow algorithm is used to seperate out pixels suspected of originating from the same parent grain. 
 
-NOTES ON THE CODE ITSELF:
+While this tool has been set up with Martensitic steel in mind, generalizing it to any other system (such as $\alpha/\beta$ titanium should be semi-trivial
 
-1)  This code was primarily written by Alexander Brust as part of his PhD thesis, 
-    with significant contributions from Eric Payton at AFRL and Seve Niezgoda at
-    Ohio State University. It uses a graph cutting algorithm to assign martensitic 
-    Block, Packet, and Variant IDs to every pixel scanned on a given EBSD map. For 
-    Further questions on the specifics of how this algorithm has been applied, 
-    contact Alex Brust (alexander.brust.ctr@us.af.mil).
+## Installation
 
-2)  the reconstruction code is still in mid-beta, and as such has some bugs.
-    Most notably, there are occasional dropped pixels (approximately 5 per scan)
-	Users should also note that Martensitic structures associated with twinned 
-	grains have different IDs in the code's output than non-twinned grains.
+Mart2Aust Requires Matlab 2018a or higher, and MTEX 5.7.0 (NOTE: MTEX is not always backwards compatable. Users hoping to use newer features in the future may need to downgrade)
 
-3)  If users utilize the 347 DISTRO A EBSD scans mentioned above, it should be
-	known that these scans were collected by Vikas Sinha (vikas.sinha.1.ctr@us.af.mil)
-	and Jared Shank (Jared.Shank.1.ctr@us.af.mil). **Please credit them as well 
-	as everyone else mentioned above appropriately when using this data.** 
+To install, copy this repo and unzip the mtex.zip file into the "Functions" folder. 
+To run a reconstruction, open the "Examples" folder and chose any of the files to run. Most focus on a small subset of scans taken from AF96, details of which can be found here :(insert link) along with several other EBSD scans of the same material.
+
+
+## Background information
+
+Users seeking to understand exactly **WHAT** this code is doing are encouraged to explor the Literature folder, which contains the publications relevant to this work. However broadly speaking, the most important concepts are:
+
+- **Texture and orientation analysis**
+- **Graph cut Theory**
+- **Parent/Child Oreintation relationships**
+  
+TODO: add actual links for places to learn about these things
+
+## Example Reconstructions
+
+**Initial:**
+---
+![Martensitic AF96 scan](/Resources/EBSD/images/AF96_Large.png)
+
+
+**Reconstructed:**
+---
+![Reconstructed Austenite](/Resources/EBSD/images/AF96_Large_out.jpeg)
+
+
+
+## Credits
+
+**Implementation of the Graph Cut Algorithm**
+Alexander Brust
+Austin Gerlt
+Steve Niezgoda
+
+**Orientation relationship determination**
+Eric Payton
+Victoria Yardley
+
+**Collection of the example EBSD data**
+Vikas Sinha
+Jared Shank
+
+**Code cleanup, modernization, bugfixing, etc**
+Austin Gerlt
+
+
+## TODO
+- Cleanup this Readme
+- Add proper references to graph cut, MTEX, MATLAB, AF96 data, etc.
+- fix example files
+- generalize to allow for Titanium and/or any Parent/child system
+- document AusRecon precursor
+- link publications
+  
