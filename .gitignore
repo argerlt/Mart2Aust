@@ -6,4 +6,7 @@
 *.jpg
 *.jpeg
 *.png
-*.tiff
+!Resources/EBSD/images/*.jpeg
+!Resources/EBSD/images/*.png
+*.ang
+.gitignore.bak
