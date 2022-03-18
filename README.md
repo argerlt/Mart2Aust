@@ -66,4 +66,5 @@ Austin Gerlt
 - generalize to allow for Titanium and/or any Parent/child system
 - document AusRecon precursor
 - link publications
-  
+- add variant plotting functions
+- add ASTM grain size

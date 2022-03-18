@@ -1,18 +1,41 @@
-% Example for how to perfomr a reconstruction on a stakc of EBSD scans
-f = fopen('data.txt','w');
-fprintf(f,header)
-fclose(f)
-writematrix(data','data.txt','delimiter',' ','WriteMode','append')
-movefile data.txt data.ang
-ebsd = EBSD.load('data.ang')
+% ======================================================================= %
+%       Multi_ebsd_no_OR.m
+%       Example for reconstructing multiple EBSD scans where the 
+%       orientation relationship is not known a priori
+% ======================================================================= %
+
+% Create Several "AF96.ang" files from provided sample data if not already 
+% available.
+% NOTE: users wishing to use their own data should skip this section, add
+% their own ebsd files to this directory, and skip to the "flight check"
+% section of the code.
+if size(dir('AF96_001.ang'),1) == 0
+    header = h5readatt("../../Resources/EBSD/EBSD.hdf5","/AF96_small",'header');
+    for i = 1:9
+        dname = "/AF96_small/AF" + num2str(i,'%.3d');
+        fname = "AF96_" + num2str(i,'%.3d')+".txt";
+        angname = "AF96_" + num2str(i,'%.3d')+".ang";
+        data = h5read("../../Resources/EBSD/EBSD.hdf5",dname);
+        f = fopen(fname,'w');
+        fprintf(f,header);
+        writematrix(data',fname,'delimiter',' ','WriteMode','append')
+        fclose(f);
+        movefile(fname, angname,"f")
+    end
+
+end
+
+
+
 %============================================
 % Flight Check
 %============================================
 % Change this line or everything breaks
 Mart2Aust_Parent_folder = "C:\Users\agerlt\workspace\Mart2Aust";
 % make struct of where things are
-meta.Data_folder = Mart2Aust_Parent_folder + filesep +'Resources'+...
-    filesep + 'EBSD'+ filesep +'AF96_small';
+% for the sake of explicit clarity, either place a copy of MTEX 5.7.0 
+% inside the Mart2Aust "MTEX" folder, or change the following line to the
+% correct absolute path for MTEX 5.7.0
 meta.MTEX_folder = Mart2Aust_Parent_folder + filesep + 'MTEX';
 meta.Functions_folder = Mart2Aust_Parent_folder + filesep + 'Mart2Aust';
 meta.current_folder = string(pwd);
@@ -37,8 +60,7 @@ clear Aus_Recon_Parent_folder
 options = load_options("default");
 %%%%%%%   Create task list of EBSD scans  %%%%%%%%
 % Make a list of the EBSD text files you want to run through AusRecon
-fnames = dir(meta.Data_folder + '\'+'*.ang');
-fnames = fnames(1:3);
+fnames = dir('*.ang');
 %%%%%%%% Build Tasks structure for storing inputs and oututs %%%%%%%
 % NOTE: this isn't required, "Tasks" iteslf never gets passed into
 % functions, it's just convenient for storing data, assuming Tasks doesnt
@@ -57,7 +79,7 @@ clear name i options fnames data_foldername;
 % ==================================================================== %
 % OR values from previous calculation (represents most of the runtime) %
 % ==================================================================== %
-Tasks(1).options.OR_ksi =  [2.9057   7.7265   8.2255];
+% Tasks(1).options.OR_ksi =  [2.9057   7.7265   8.2255];
 % Tasks(2).options.OR_ksi =  [2.9057   7.7714   8.1489];
 % Tasks(3).options.OR_ksi =  [3.0124   8.2746   8.6362];
 % Tasks(4).options.OR_ksi =  [2.8199   8.3107   8.6233];
@@ -67,7 +89,7 @@ Tasks(1).options.OR_ksi =  [2.9057   7.7265   8.2255];
 % Tasks(8).options.OR_ksi =  [ 2.7885  9.7678   9.8262];
 % Tasks(9).options.OR_ksi =  [ 3.2479  8.3699   8.7926];
 % Tasks(10).options.OR_ksi = [ 2.9300  9.0332   9.2412];
-Tasks(1).options.OR_noise =  0.0281;
+% Tasks(1).options.OR_noise =  0.0281;
 % Tasks(2).options.OR_noise =  0.0275;
 % Tasks(3).options.OR_noise =  0.0333;
 % Tasks(4).options.OR_noise =  0.0332;

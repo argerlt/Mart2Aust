@@ -83,7 +83,8 @@ tmpEbsd.phase = 2;
 % corresponding groupoid
 hw = 2*degree;
 psi=deLaValleePoussinKernel('halfwidth',hw);
-MartModf = calcODF(G_misos,'kernel',psi);
+%MartModf = calcODF(G_misos,'kernel',psi);
+MartModf = calcDensity(G_misos,'kernel',psi);
 
 % Establish transformation matrices
 [T2R,~]=calc_T2R(ksi,CS_HT,CS_LT);
@@ -91,7 +92,8 @@ MartModf = calcODF(G_misos,'kernel',psi);
 
 % From our EBSD region, transform the martensite to austenite and find the
 % modal austenite orientation to use as our guess
-aus_odf=calcODF(symmetrise(tmpEbsd.orientations)*T2R,'kernel',psi);
+%aus_odf=calcODF(symmetrise(tmpEbsd.orientations)*T2R,'kernel',psi);
+aus_odf=calcDensity(symmetrise(tmpEbsd.orientations)*T2R,'kernel',psi);
 [~,AusOr] = max(aus_odf);
 
 % Call function to compute adjacency array and corresponding
