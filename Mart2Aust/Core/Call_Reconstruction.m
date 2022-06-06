@@ -1,6 +1,6 @@
-function HT_ebsd = Call_Reconstruction(orig_ebsd,options,LT_MDF)
+function [HT_ebsd, likelihoods] = Call_Reconstruction(orig_ebsd,options,LT_MDF)
 % Do the actual reconstruction from the low temp to the high temp phase
-
+fprintf("starting Reconstruction...\n")
 % Pre-flight stuff:
 % If users provide a misorientation distribution function for the low-temp
 % phase (LT_MDF), overwrite the saved one with that
@@ -19,11 +19,12 @@ LT_ebsd = orig_ebsd(orig_ebsd.phaseId == 2);
 % neighboring pixels share a parent)
 neighborhood_size = int32(options.degree_of_connections_for_neighborhood);
 neigh_list = find_neighboring_pairs(LT_ebsd,neighborhood_size);
+fprintf("calculating weights\n")
 IP_wts = get_In_plane_weights(neigh_list,LT_ebsd,options);
 
 % Now do the actual reconstruction as a seperate function (helps avoid
 % accidental overwrites and removes pre-flight parameters)
-recon_ebsd = Reconstruct_HT_grains(LT_ebsd,...
+[recon_ebsd, LT_likelihoods] = Reconstruct_HT_grains(LT_ebsd,...
     neigh_list,...
     IP_wts,...
     options);
@@ -34,10 +35,12 @@ temp_ebsd.phase = 2;
 HT_ebsd = orig_ebsd;
 HT_ebsd(orig_ebsd.phaseId == 2).orientations = temp_ebsd.orientations;
 HT_ebsd(orig_ebsd.phaseId == 2).phaseId = recon_ebsd.phaseId;
+likelihoods(orig_ebsd.phaseId == 2) = LT_likelihoods;
+likelihoods = transpose(likelihoods);
 end
 
 
-function LT_ebsd = Reconstruct_HT_grains(LT_ebsd,neigh_list,IP_wts,options)
+function [LT_ebsd, likelihoods] = Reconstruct_HT_grains(LT_ebsd,neigh_list,IP_wts,options)
 %Reconstruct_HT_grains perform the actual reconstruction
 %   performs a 'while ' loop that progressively cuts out possible grains
 %   until eithr there is nothing left to cut, or the algorithm starts
@@ -46,6 +49,7 @@ Active_Ebsd = LT_ebsd(LT_ebsd.phaseId == 2);
 continue_recon = true;
 iterations = 0;
 bad_cut_counter = 0;
+likelihoods = zeros(Active_Ebsd.size);
 %temp plotting stuff
 %close all;
 %%figure()
@@ -102,7 +106,7 @@ while continue_recon == 1
     % if the grain made it this far, reset the counters and do 5 graph
     % cuts (1 for the parent, 4 for the twins) to find the parent/twin areas
     bad_cut_counter = 0;
-    [PT_ID_stack] = Seperate_Twins(proposed_grain, neigh_list, IP_wts, PT_oris,options);
+    [PT_ID_stack,PT_likelihoods] = Seperate_Twins(proposed_grain, neigh_list, IP_wts, PT_oris,options);
     % Use this data to overwrite the orientation and phase data in LT_ebsd
     for i = 1:size(PT_oris,1)
         mask = PT_ID_stack(i,1:end);
@@ -114,6 +118,12 @@ while continue_recon == 1
         LT_ebsd(ismember(LT_ebsd.id, IDs_to_assign)).orientations = PT_oris(i);
         LT_ebsd(ismember(LT_ebsd.id, IDs_to_assign)).phase = 3;
     end
+    % Also assign the likelihoods relative to each twin to the likelihood
+    % map
+    likelihoods(ismember(LT_ebsd.id, proposed_grain.id)) = PT_likelihoods;
+    % Plot for showing the likelihood map after each assignment
+    %figure()
+    %plot(LT_ebsd,likelihoods)
 
     % Prune out any orphaned pixels
 %    orphan_IDs = prune_orphaned_pixels(Active_Ebsd,neigh_list);
@@ -307,7 +317,7 @@ proposed_grain = Rough_Guess(cs);
 end
 
 
-function [Parent_and_Twin_IDs] = Seperate_Twins(proposed_grain, neigh_list, IP_wts, PT_oris,options)
+function [Parent_and_Twin_IDs,likelihoods] = Seperate_Twins(proposed_grain, neigh_list, IP_wts, PT_oris,options)
 % Given we have a for sure parent grain, check to see if parts would make
 % more sense as a twin or as part of the parent.
 
@@ -333,12 +343,12 @@ Parent_and_Twin_IDs = zeros(size(PT_oris,1),size(oris,1));
 Parent_variants = rotation(symmetrise(PT_oris(1)))*R2T;
 Parent_odf = calcDensity(Parent_variants,'kernel',psi);
 Parent_odf.CS = HT_CS;
-bg_likelyhoods = eval(Parent_odf,oris);%#ok<EV2IN> 
-bg_likelyhoods(bg_likelyhoods <=0) = 0;
-mx = (bg_likelyhoods*options.RGC_post_pre_m);
+likelihoods = eval(Parent_odf,oris);%#ok<EV2IN> 
+likelihoods(likelihoods <=0) = 0;
+mx = (likelihoods*options.RGC_post_pre_m);
 b =  options.RGC_post_pre_b;
 OP_Parent_wts = mx + b;
-clear Parent_variants Parent_odf bg_likelyhoods mx b
+clear Parent_variants Parent_odf mx b
 
 for i = 2:size(PT_oris,1)
 
@@ -351,7 +361,7 @@ for i = 2:size(PT_oris,1)
     mx = (fg_likelyhoods*options.RGC_post_pre_m);
     b =  options.RGC_post_pre_b;
     OP_twin_wts = mx + b;
-    clear Twin_variants Twin_odf fg_likelyhoods mx b
+    clear Twin_variants Twin_odf mx b
     
     % Set the weights of already assigned poitns to 1e-10, making already
     % assigned grains nearly impossible to cut (should maybe be 0?)
@@ -380,6 +390,7 @@ for i = 2:size(PT_oris,1)
     assigned =(1:N).*(sum(Parent_and_Twin_IDs,1)>0);
     neigh_mask = ((ismember(L,assigned) == 0) +(ismember(R,assigned) == 0))>0;
     pruned_IP_wts = pruned_IP_wts.*neigh_mask;    
+    likelihoods = max(fg_likelyhoods.*transpose(Parent_and_Twin_IDs(i,1:end)),likelihoods);
 
     % plotting for help
     %figure()

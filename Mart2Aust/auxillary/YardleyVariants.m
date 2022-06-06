@@ -75,7 +75,9 @@ B{11}=[ 0 -1 -1; 0  1 -1; 1  0  0];
 B{12}=[-1  1  0; 1  1  0; 0  0 -1];
 % Normalize correspondence matrices
 for i=1:length(B)
-    for j=1:3, B{i}(:,j)=B{i}(:,j)/norm(B{i}(:,j));end
+    for j=1:3        
+        B{i}(:,j)=B{i}(:,j)/norm(B{i}(:,j));
+    end
 end
 
 %% Produce variants

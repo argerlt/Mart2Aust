@@ -11,7 +11,7 @@
 % section of the code.
 if size(dir('AF96_001.ang'),1) == 0
     header = h5readatt("../../Resources/EBSD/EBSD.hdf5","/AF96_small",'header');
-    for i = 1:9
+    for i = 5:10
         dname = "/AF96_small/AF" + num2str(i,'%.3d');
         fname = "AF96_" + num2str(i,'%.3d')+".txt";
         angname = "AF96_" + num2str(i,'%.3d')+".ang";
@@ -77,34 +77,22 @@ end
 clear name i options fnames data_foldername;
 
 % ==================================================================== %
-% OR values from previous calculation (represents most of the runtime) %
+%              OPTIONAL: preset Orientation relationships              %
 % ==================================================================== %
-% Tasks(1).options.OR_ksi =  [2.9057   7.7265   8.2255];
-% Tasks(2).options.OR_ksi =  [2.9057   7.7714   8.1489];
-% Tasks(3).options.OR_ksi =  [3.0124   8.2746   8.6362];
-% Tasks(4).options.OR_ksi =  [2.8199   8.3107   8.6233];
-% Tasks(5).options.OR_ksi =  [ 4.8555  9.6552   9.9376];
-% Tasks(6).options.OR_ksi =  [3.0825   7.9865   8.4129];
-% Tasks(7).options.OR_ksi =  [ 3.0624  7.8404   8.2899];
-% Tasks(8).options.OR_ksi =  [ 2.7885  9.7678   9.8262];
-% Tasks(9).options.OR_ksi =  [ 3.2479  8.3699   8.7926];
-% Tasks(10).options.OR_ksi = [ 2.9300  9.0332   9.2412];
-% Tasks(1).options.OR_noise =  0.0281;
-% Tasks(2).options.OR_noise =  0.0275;
-% Tasks(3).options.OR_noise =  0.0333;
-% Tasks(4).options.OR_noise =  0.0332;
-% Tasks(5).options.OR_noise =  0.0514;
-% Tasks(6).options.OR_noise =  0.0310;
-% Tasks(7).options.OR_noise =  0.0293;
-% Tasks(8).options.OR_noise =  0.0402;
-% Tasks(9).options.OR_noise =  0.0304;
-% Tasks(10).options.OR_noise = 0.0340;
+for i = 1:length(Tasks)
+    % If these optional values are given, AutoOR will skip the OR
+    % calculation and move straight to the reconstruction.
+    % OR seems to vary from scan to scan even in identical billets of
+    % material, so doing this will degrade the reconstruction, but more
+    % than half the overal computation time.
+    Tasks(i).options.OR_ksi = [ 2.9300  9.0332   9.2412];
+    Tasks(i).options.OR_noise =  0.0281;
+end
 
 % ================================================================ %
 %                  prep, reconstruct, and segment                  %
 % ================================================================ %
 for i = 1:length(Tasks)
-
     % not all scans are created equal. attempt to homogenize phase names
     original_ebsd =  EBSD.load(Tasks(i).location,...
         'convertEuler2SpatialReferenceFrame'...
@@ -134,10 +122,36 @@ for i = 1:length(Tasks)
     Tasks(i).stage = 2;
     clear psi OR metadata M LT_MDF HW
 
+    fprintf("AutoOR is done\n")
+
     % Perform the actual Reconstruction
     Tasks(i).Recon_ebsd = Call_Reconstruction(Tasks(i).ebsd,Tasks(i).options);
 
     % Segment the variants using the low temp and high temp maps
     Tasks(i).variant_int_map = variants(Tasks(i).ebsd, ...
         Tasks(i).Recon_ebsd,Tasks(i).options);
+    end
+% ================================================================ %
+%                              Plotting                            %
+% ================================================================ %
+% These scans have a lot going on, so for ease we have provided
+% some examples of how to plot this data.
+O = Tasks(9).ebsd;
+R = Tasks(9).Recon_ebsd;
+options = Tasks(9).options;
+
+MO = O(O.phaseId == 2);
+[gmap, MO.grainId] = calcGrains(R(R.phaseId == 3));
+
+v_map = variants(O, R, options);
+key = ipfHSVKey(MO);
+mp = key.orientation2color(MO.orientations);
+steel_cmap = get_subgrain_colormaps('Steel');
+
+figure()
+for i = 1:24
+    mask = rem(v_map,24)==(rem(i,24));
+%    mask = logical(mask.*transpose(MO.grainId ==mode(MO.grainId)));
+    plot(MO(mask),mp(mask),'FaceColor',steel_cmap.Variant(i,:))
+    hold on
 end
