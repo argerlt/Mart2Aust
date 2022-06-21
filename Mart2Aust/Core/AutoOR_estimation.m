@@ -34,7 +34,7 @@ SS = ebsd.opt.SS;
 
 %% search the low temp phase (Phase 2) for acceptably close PAG
 % for first iteration, make the entire scan searchable
-searchable_ebsd = ebsd(ebsd.phaseId == 2);
+searchable_ebsd = ebsd;
 for iteration = 1:10
     % NOTE TO FUTURE USERS: The first step in this code is to use the MTEX
     % calcgrain tool to find likely martensite grains, then merge grains
@@ -66,7 +66,7 @@ for iteration = 1:10
     %to the leftovers-only search, JIC. Feel free to try either way.
     %% Method 1: Search all unused areas
     % find indices of a possible grain
-    [Aus_Grain_Ids,~,AusOr] = HT_grain_guess(searchable_ebsd);
+    [Aus_Grain_Ids,~,AusOr] = HT_grain_guess_Alex(searchable_ebsd);
     % extract the expected grain and leave the remainder for future searches
     grain_ebsd = searchable_ebsd(Aus_Grain_Ids);
     searchable_ebsd(Aus_Grain_Ids) = [];
@@ -89,6 +89,7 @@ for iteration = 1:10
         martensite=martensite(keep(1:options.OR_sampling_size));
     else
     end
+    
     % plot the martensite pole figure and grain if desired
     if options.OR_plot_PAG_Mart_Guess == 1
         figure();
@@ -142,7 +143,6 @@ for iteration = 1:10
     %leftover can ignore
     austenite_prior_odf=uniformODF(CS_HT,SS);
     
-    
     prior_pars=struct;
     prior_pars.ksi_prior_mu=ksi_prior_mu;
     prior_pars.ksi_prior_sigma=ksi_prior_sigma;
@@ -171,7 +171,7 @@ for iteration = 1:10
         count = count+1;
         % Optimization function outside of ML add-on
         [MAPpars,~,~,~]=fminsearch(optimfunc,x0,MAP_options);
-        
+        keyboard
         if (MAPpars(1) < MAPpars(2) && MAPpars(3)) || count > 2
             init_guess = 1;
             % Enforce constraint if need be

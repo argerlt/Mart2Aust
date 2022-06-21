@@ -1,4 +1,4 @@
-function HT_ebsd = Call_Reconstruction(orig_ebsd,options,LT_MDF)
+function [HT_ebsd, GlobOP_wts] = Call_Reconstruction(orig_ebsd,options,LT_MDF)
 % Do the actual reconstruction from the low temp to the high temp phase
 
 % Pre-flight stuff:
@@ -23,7 +23,7 @@ IP_wts = get_In_plane_weights(neigh_list,LT_ebsd,options);
 
 % Now do the actual reconstruction as a seperate function (helps avoid
 % accidental overwrites and removes pre-flight parameters)
-recon_ebsd = Reconstruct_HT_grains(LT_ebsd,...
+[recon_ebsd, RecOP_wts] = Reconstruct_HT_grains(LT_ebsd,...
     neigh_list,...
     IP_wts,...
     options);
@@ -34,10 +34,15 @@ temp_ebsd.phase = 2;
 HT_ebsd = orig_ebsd;
 HT_ebsd(orig_ebsd.phaseId == 2).orientations = temp_ebsd.orientations;
 HT_ebsd(orig_ebsd.phaseId == 2).phaseId = recon_ebsd.phaseId;
+
+% Set likelihood for entire ebsd data set, regardless of the phase. Those
+% specific likelihood values can be later extracted using ebsd('phase').id
+GlobOP_wts = zeros(length(orig_ebsd),1);
+GlobOP_wts(orig_ebsd.isIndexed) = RecOP_wts;
 end
 
 
-function LT_ebsd = Reconstruct_HT_grains(LT_ebsd,neigh_list,IP_wts,options)
+function [LT_ebsd,RecOP_wts] = Reconstruct_HT_grains(LT_ebsd,neigh_list,IP_wts,options)
 %Reconstruct_HT_grains perform the actual reconstruction
 %   performs a 'while ' loop that progressively cuts out possible grains
 %   until eithr there is nothing left to cut, or the algorithm starts
@@ -51,6 +56,9 @@ bad_cut_counter = 0;
 %%figure()
 %%plot(Active_Ebsd,Active_Ebsd.orientations)
 
+% Alex add on: Global Likelihood
+RecOP_wts = zeros(length(LT_ebsd),1);
+
 while continue_recon == 1
     % checks to break out of while loop
     if iterations > options.max_recon_attempts || bad_cut_counter > 10
@@ -61,7 +69,7 @@ while continue_recon == 1
         disp('=========================================\n')
         continue
     end
-    if sum(LT_ebsd.phaseId == 2) == 0
+    if sum(LT_ebsd.phaseId == 2) < 4
         continue_recon = false;
         disp('\n=========================================')
         disp('reconstruction completed successfully!')
@@ -71,7 +79,12 @@ while continue_recon == 1
 
     %% ======== Step 1 ======== %%
     % Find a likely high temp grain orientation to attempt to cut out.
-    Guess_ID = randsample(1:length(Active_Ebsd),1,true,Active_Ebsd.ci);
+    try
+        Guess_ID = randsample(1:length(Active_Ebsd),1,true,Active_Ebsd.ci);
+    catch
+        Guess_ID = randsample(1:length(Active_Ebsd),1,true);
+    end
+
     HT_guess_ori = Active_Ebsd(Guess_ID).orientations;
 
     % Using that guess, make a rough cut to find a likely HT grain.If the
@@ -102,7 +115,7 @@ while continue_recon == 1
     % if the grain made it this far, reset the counters and do 5 graph
     % cuts (1 for the parent, 4 for the twins) to find the parent/twin areas
     bad_cut_counter = 0;
-    [PT_ID_stack] = Seperate_Twins(proposed_grain, neigh_list, IP_wts, PT_oris,options);
+    [PT_ID_stack,LocOP_wts] = Seperate_Twins(proposed_grain, neigh_list, IP_wts, PT_oris,options);
     % Use this data to overwrite the orientation and phase data in LT_ebsd
     for i = 1:size(PT_oris,1)
         mask = PT_ID_stack(i,1:end);
@@ -113,6 +126,7 @@ while continue_recon == 1
         IDs_to_assign = proposed_grain(mask).id;
         LT_ebsd(ismember(LT_ebsd.id, IDs_to_assign)).orientations = PT_oris(i);
         LT_ebsd(ismember(LT_ebsd.id, IDs_to_assign)).phase = 3;
+        RecOP_wts(ismember(LT_ebsd.id, IDs_to_assign)) = LocOP_wts(mask);
     end
 
     % Prune out any orphaned pixels
@@ -292,6 +306,7 @@ FP_digraph = addedge(FP_digraph,R,L,pruned_IP_wts);
 [~,~,cs,~]=maxflow(FP_digraph,N+1,N+2);
 cs(cs>length(Rough_Guess)) = [];
 proposed_grain = Rough_Guess(cs);
+
 % Code for debugging to show the cut out area. NOTE: this is not a grain,
 % Its just a region of the scan that likely has at least one complete grain
 % in it
@@ -307,7 +322,7 @@ proposed_grain = Rough_Guess(cs);
 end
 
 
-function [Parent_and_Twin_IDs] = Seperate_Twins(proposed_grain, neigh_list, IP_wts, PT_oris,options)
+function [Parent_and_Twin_IDs,LocOP_wts] = Seperate_Twins(proposed_grain, neigh_list, IP_wts, PT_oris,options)
 % Given we have a for sure parent grain, check to see if parts would make
 % more sense as a twin or as part of the parent.
 
@@ -338,6 +353,7 @@ bg_likelyhoods(bg_likelyhoods <=0) = 0;
 mx = (bg_likelyhoods*options.RGC_post_pre_m);
 b =  options.RGC_post_pre_b;
 OP_Parent_wts = mx + b;
+LocOP_wts = OP_Parent_wts;
 clear Parent_variants Parent_odf bg_likelyhoods mx b
 
 for i = 2:size(PT_oris,1)
@@ -375,6 +391,8 @@ for i = 2:size(PT_oris,1)
     % save out the mask of the cut
 %    yes_mask = [1:N].*ismember([1:N],cs);
     Parent_and_Twin_IDs(i,1:end) = ismember((1:N),cs);
+    % Establish OP weights for completed parent and twins
+    LocOP_wts(ismember((1:N),cs)) = OP_twin_wts(cs);
     % find the already assigned orientations, set their in-plane weights to
     % zero so they won't get pulled out again.
     assigned =(1:N).*(sum(Parent_and_Twin_IDs,1)>0);
@@ -502,5 +520,4 @@ end
     % option.To switch to first (IE, only 1st Von Neumann
     % neighborhood) change options.degree_of_connections_for_neighborhood
     % from 2 to 1.
-
 
