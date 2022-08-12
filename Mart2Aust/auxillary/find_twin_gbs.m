@@ -34,12 +34,14 @@ function [Aus_gb_merged,ebsd,S3,S9] = find_twin_gbs(ebsd, phaseID)
     
     % Merge parents and twins
     [Aus_gb_merged,ParentId] = merge(grains,All_Twin_Boundaries);
-    
+  
     % Loop through ebsd and replace grainIds with merged ones
-    for ii = 1:length(grains.id)
-        ebsd.grainId(ismember(ebsd.grainId,ii)) = ParentId(ii);
+    EbIds = zeros(length(ebsd),1);
+    for ii = 1:length(ParentId)
+        EbIds(ismember(ebsd.grainId,ii)) = ParentId(ii);
     end
-    
+    ebsd.grainId = EbIds;
+
     % Assign parent orientations to the merged grain structure.
     for jj = 1:length(Aus_gb_merged.id)
         MergedGrns  = grains.id(ismember(ParentId,jj));
@@ -47,6 +49,7 @@ function [Aus_gb_merged,ebsd,S3,S9] = find_twin_gbs(ebsd, phaseID)
         ParOr       = grains(MergedGrns(MaxId)).meanOrientation;
         Aus_gb_merged(jj).meanOrientation = ParOr;
     end
+
     % NOTE 2: When you merged the grains, a lot of the grain orientations 
     % were assigned values of nan. This fixes that, but under the 
     % assumption that the largest surface area for each identified parent 

@@ -171,7 +171,7 @@ for iteration = 1:10
         count = count+1;
         % Optimization function outside of ML add-on
         [MAPpars,~,~,~]=fminsearch(optimfunc,x0,MAP_options);
-        keyboard
+        
         if (MAPpars(1) < MAPpars(2) && MAPpars(3)) || count > 2
             init_guess = 1;
             % Enforce constraint if need be
