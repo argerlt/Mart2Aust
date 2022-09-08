@@ -150,6 +150,9 @@ for i = 1:24
     plot(Mart(mask),mp(mask),'FaceColor',steel_cmap.Variant(i,:))
     hold on
 end
+plot(gB_PAG,'linecolor','k','linewidth',3,'displayName','Prior')
+plot(S3_TwinBoundaries,'linecolor','red','linewidth',1.5,'displayName','S3 Twin')
+plot(S9_TwinBoundaries,'linecolor','blue','linewidth',1.5,'displayName','S9 Twin')
 
 %% Plot single grain with packets and Blocks outlined
 

@@ -66,7 +66,7 @@ fnames = dir('*.ang');
 % functions, it's just convenient for storing data, assuming Tasks doesnt
 % get so big it causes OOM errors. (For big stuff, just load and save one
 % at a time)
-for i = length(fnames):-1:1
+for i = length(fnames)-5:-1:1
     name = split(string(fnames(i).name),'.');
     Tasks(i).name  = name(end-1);
     Tasks(i).location = [fnames(i).folder, filesep, fnames(i).name];
@@ -128,7 +128,7 @@ for i = 1:length(Tasks)
     Tasks(i).Recon_ebsd = Call_Reconstruction(Tasks(i).ebsd,Tasks(i).options);
 
     % Segment the variants using the low temp and high temp maps
-    Tasks(i).variant_int_map = variants(Tasks(i).ebsd, ...
+    Tasks(i).variant_int_map = subgrains(Tasks(i).ebsd, ...
         Tasks(i).Recon_ebsd,Tasks(i).options);
     end
 % ================================================================ %
@@ -136,14 +136,14 @@ for i = 1:length(Tasks)
 % ================================================================ %
 % These scans have a lot going on, so for ease we have provided
 % some examples of how to plot this data.
-O = Tasks(9).ebsd;
-R = Tasks(9).Recon_ebsd;
-options = Tasks(9).options;
+O = Tasks(4).ebsd;
+R = Tasks(4).Recon_ebsd;
+options = Tasks(4).options;
 
 MO = O(O.phaseId == 2);
 [gmap, MO.grainId] = calcGrains(R(R.phaseId == 3));
 
-v_map = variants(O, R, options);
+v_map = subgrains(O, R, options);
 key = ipfHSVKey(MO);
 mp = key.orientation2color(MO.orientations);
 steel_cmap = get_subgrain_colormaps('Steel');

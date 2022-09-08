@@ -12,3 +12,5 @@
 .gitignore.bak
 Examples/multiple_ebsd_unknown_OR/*
 !Examples/multiple_ebsd_unknown_OR/*.m
+Examples/*/*.ctf
+
