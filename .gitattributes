@@ -3,6 +3,7 @@
 *.ang filter=lfs diff=lfs merge=lfs -text
 *.pdf filter=lfs diff=lfs merge=lfs -text
 *.zip filter=lfs diff=lfs merge=lfs -text
+*.mlx filter=lfs diff=lfs merge=lfs -text
 Resources/Literature/2006_Kitahara_lath_martensite.pdf filter=lfs diff=lfs merge=lfs -text
 Resources/Literature/2012_On_the_nature_of_internal_interfaces_in_Steel_during_creep.pdf filter=lfs diff=lfs merge=lfs -text
 Resources/Literature/Brust_2021_Graph_cut.htm filter=lfs diff=lfs merge=lfs -text
